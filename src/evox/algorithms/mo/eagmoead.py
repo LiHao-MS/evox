@@ -13,6 +13,7 @@
 import jax
 import jax.numpy as jnp
 from functools import partial
+import math
 
 from evox import jit_class, Algorithm, State
 from evox.operators import (
@@ -22,8 +23,8 @@ from evox.operators import (
     non_dominated_sort,
     crowding_distance,
 )
-from evox.operators.sampling import UniformSampling, LatinHypercubeSampling
-from evox.utils import pairwise_euclidean_dist
+from evox.operators.sampling import LatinHypercubeSampling, UniformSampling
+from evox.utils import pairwise_euclidean_dist, AggregationFunction
 
 
 @partial(jax.jit, static_argnums=[1])
@@ -62,7 +63,7 @@ class EAGMOEAD(Algorithm):
         self.dim = lb.shape[0]
         self.pop_size = pop_size
         self.LGs = LGs
-        self.T = jnp.ceil(self.pop_size / 10).astype(int)
+        self.T = math.ceil(self.pop_size / 10)
 
         self.selection = selection_op
         self.mutation = mutation_op
@@ -75,9 +76,11 @@ class EAGMOEAD(Algorithm):
         if self.crossover is None:
             self.crossover = crossover.SimulatedBinary(type=2)
         self.sample = LatinHypercubeSampling(self.pop_size, self.n_objs)
+        self.aggregate_func = AggregationFunction("weighted_sum")
 
     def setup(self, key):
         key, subkey1, subkey2 = jax.random.split(key, 3)
+
         ext_archive = (
             jax.random.uniform(subkey1, shape=(self.pop_size, self.dim))
             * (self.ub - self.lb)
@@ -158,10 +161,10 @@ class EAGMOEAD(Algorithm):
 
         def body_fun(i, vals):
             population, pop_obj = vals
-            g_old = jnp.sum(
-                pop_obj[B[offspring_loc[i], :]] * w[B[offspring_loc[i], :]], axis=1
+            g_old = self.aggregate_func(
+                pop_obj[B[offspring_loc[i], :]], w[B[offspring_loc[i], :]]
             )
-            g_new = w[B[offspring_loc[i], :]] @ jnp.transpose(offspring_obj[i])
+            g_new = self.aggregate_func(offspring_obj[i], w[B[offspring_loc[i], :]])
             idx = B[offspring_loc[i]]
             g_new = g_new[:, jnp.newaxis]
             g_old = g_old[:, jnp.newaxis]

@@ -13,7 +13,7 @@ mypkg = ["*.txt", "*.json"]
 
 [project]
 name = "evox"
-version = "0.7.1"
+version = "0.8.1"
 authors = [
   { name = "Bill Huang", email = "bill.huang2001@gmail.com" },
   { name = "Christina Lee", email = "1315552992@qq.com" },
@@ -33,6 +33,7 @@ classifiers = [
 dependencies = [
   "jax >= 0.4.16",
   "jaxlib >= 0.3.0",
+  "jax_dataclasses >= 1.6.0",
   "optax >= 0.1.0",
   "pyarrow >= 10.0.0",
 ]
@@ -42,6 +43,12 @@ test = [
   "chex >= 0.1.0",
   "flax >= 0.5.0",
   "pytest >= 6.0.0",
+  "tensorflow >= 2.12.0",
+]
+
+vis = [
+  "plotly >= 5.0.0",
+  "pandas >= 2.0.0",
 ]
 
 gymnasium = ["gymnasium >= 0.29.0"]
@@ -49,8 +56,9 @@ gymnasium = ["gymnasium >= 0.29.0"]
 envpool = ["envpool >= 0.8.0"]
 
 neuroevolution = [
-  "torch >= 1.0.0",
-  "torchvision >= 0.1.0",
+  "tensorflow-datasets >= 4.0.0",
+  "grain >= 0.1.0",
+  "brax >= 0.1.0",
 ]
 
 distributed = ["ray >= 2.0.0"]
@@ -58,10 +66,15 @@ distributed = ["ray >= 2.0.0"]
 full = [
   "gymnasium >= 0.29.0",
   "ray >= 2.0.0",
-  "torch >= 1.0.0",
-  "torchvision >= 0.1.0",
   "envpool >= 0.8.0",
   "gpjax >= 0.8.0",
+  "plotly >= 5.0.0",
+  "pandas >= 2.0.0",
+  "tensorflow-datasets >= 4.0.0",
+  "grain >= 0.1.0",
+  "brax >= 0.1.0",
+  "plotly >= 5.0.0",
+  "pandas >= 2.0.0",
 ]
 
 gp = ["gpjax >= 0.8.0"]

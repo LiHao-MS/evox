@@ -1,17 +1,21 @@
 from collections.abc import Iterable
 from functools import partial
 from typing import List, Union
+from dataclasses import field
 
 import jax
 import jax.numpy as jnp
 from jax import jit, vmap
 from jax.tree_util import tree_flatten, tree_leaves, tree_unflatten
+import optax
 
 from ..core.module import *
 
 
 def algorithm_has_init_ask(algorithm, state):
-    probe = jax.eval_shape(algorithm.init_ask, state)
+    if not hasattr(algorithm, "init_ask"):
+        return False
+    probe = jax.eval_shape(use_state(algorithm.init_ask), state)
     return probe[0] is not None
 
 
@@ -142,10 +146,10 @@ def rank_based_fitness(raw_fitness):
     return fitness_rank / (num_elems - 1) - 0.5
 
 
+@dataclass
 class OptaxWrapper(Stateful):
-    def __init__(self, optimizer, init_params):
-        self.optimizer = optimizer
-        self.init_params = init_params
+    optimizer: Static[optax.GradientTransformation]
+    init_params: jax.Array
 
     def setup(self, key):
         opt_state = self.optimizer.init(self.init_params)
@@ -235,9 +239,9 @@ def parse_opt_direction(opt_direction: Union[str, List[str]]):
     elif isinstance(opt_direction, list):
         result = []
         for d in opt_direction:
-            if opt_direction == "min":
+            if d == "min":
                 result.append(1)
-            elif opt_direction == "max":
+            elif d == "max":
                 result.append(-1)
             else:
                 raise ValueError(f"opt_direction is either 'min' or 'max', got {d}")
@@ -262,3 +266,52 @@ def frames2gif(frames, save_path, duration=0.1):
             writer.append_data(formatted_image)
 
     print("Gif saved to: ", save_path)
+
+
+@jit_class
+class AggregationFunction:
+    """
+    Aggregation function: PBI approach, Tchebycheff approach, Tchebycheff approach with normalization,
+    modified Tchebycheff approach, weighted sum approach.
+
+    Args:
+        function_name (str): name of the aggregation function.
+    """
+
+    def __init__(self, function_name):
+        if function_name == "pbi":
+            self.function = self.pbi
+        elif function_name == "tchebycheff":
+            self.function = self.tchebycheff
+        elif function_name == "tchebycheff_norm":
+            self.function = self.tchebycheff_norm
+        elif function_name == "modified_tchebycheff":
+            self.function = self.modified_tchebycheff
+        elif function_name == "weighted_sum":
+            self.function = self.weighted_sum
+        else:
+            raise ValueError("Unsupported function")
+
+    def pbi(self, f, w, z, *args):
+        norm_w = jnp.linalg.norm(w, axis=1)
+        f = f - z
+        d1 = jnp.sum(f * w, axis=1) / norm_w
+        d2 = jnp.linalg.norm(
+            f - (d1[:, jnp.newaxis] * w / norm_w[:, jnp.newaxis]), axis=1
+        )
+        return d1 + 5 * d2
+
+    def tchebycheff(self, f, w, z, *args):
+        return jnp.max(jnp.abs(f - z) * w, axis=1)
+
+    def tchebycheff_norm(self, f, w, z, z_max, *args):
+        return jnp.max(jnp.abs(f - z) / (z_max - z) * w, axis=1)
+
+    def modified_tchebycheff(self, f, w, z, *args):
+        return jnp.max(jnp.abs(f - z) / w, axis=1)
+
+    def weighted_sum(self, f, w, *args):
+        return jnp.sum(f * w, axis=1)
+
+    def __call__(self, *args, **kwargs):
+        return self.function(*args, **kwargs)

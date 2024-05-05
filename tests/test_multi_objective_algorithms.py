@@ -22,7 +22,7 @@ def run_moea(algorithm, problem=problems.numerical.DTLZ1(m=M)):
         monitors=[monitor],
     )
     state = workflow.init(key)
-    true_pf, state = problem.pf(state)
+    true_pf = problem.pf()
 
     for i in range(ITER):
         state = workflow.step(state)
@@ -46,7 +46,6 @@ def test_moead():
         ub=jnp.full(shape=(N,), fill_value=UB),
         n_objs=M,
         pop_size=POP_SIZE,
-        type=1,
     )
     run_moea(algorithm)
 
@@ -200,8 +199,19 @@ def test_lmocso():
     )
     run_moea(algorithm)
 
+
 def test_im_moea():
     algorithm = algorithms.IMMOEA(
+        lb=jnp.full(shape=(N,), fill_value=LB),
+        ub=jnp.full(shape=(N,), fill_value=UB),
+        n_objs=M,
+        pop_size=POP_SIZE,
+    )
+    run_moea(algorithm)
+
+
+def test_rveaa():
+    algorithm = algorithms.RVEAa(
         lb=jnp.full(shape=(N,), fill_value=LB),
         ub=jnp.full(shape=(N,), fill_value=UB),
         n_objs=M,
